@@ -411,21 +411,21 @@
    ]
   },
   {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "collapsed": true
-   },
-   "outputs": [],
+   "cell_type": "markdown",
+   "metadata": {},
    "source": [
     "3/14 : \n",
     "    Have the reads for chr 21 and chr 21 fasta file. \n",
-    "    How to start BWA program? \n",
+    "    How to start BWA program? \"make\"\n",
     "    \n",
     "    steps:\n",
     "        !bwa index -a is chr1.fa\n",
     "        !bwa aln -n 0.04 -o 2 -e -1 -t 1 chr21.fa chr21_feed.fa > outchr21maps.sai\n",
-    "        ...\n"
+    "        ...\n",
+    "   \n",
+    "    need reads from Marzie\n",
+    "    \n",
+    "    transferring all files to scc "
    ]
   },
   {
@@ -587,6 +587,20 @@
     "wraparound= open(\"chr21_wraparound.txt\",\"w+\")\n",
     "wraparound.write(ref_nowhitespace)\n",
     "wraparound.close() \n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "bwa aln -n 0.04 -o 2 -e -1 -t 8 chr21_new_wraparound.fa /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_1.fastq.gz > bwa_aln_chr21_1.sai\n",
+    "\n",
+    "bwa aln -n 0.04 -o 2 -e -1 -t 8 chr21_new_wraparound.fa /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_2.fastq.gz > bwa_aln_chr21_2.sai\n",
     "\n"
    ]
   }

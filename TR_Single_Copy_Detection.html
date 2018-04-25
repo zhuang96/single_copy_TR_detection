@@ -601,8 +601,300 @@
     "bwa aln -n 0.04 -o 2 -e -1 -t 8 chr21_new_wraparound.fa /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_1.fastq.gz > bwa_aln_chr21_1.sai\n",
     "\n",
     "bwa aln -n 0.04 -o 2 -e -1 -t 8 chr21_new_wraparound.fa /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_2.fastq.gz > bwa_aln_chr21_2.sai\n",
-    "\n"
+    "\n",
+    "qsub -P vntrseek -N bwaaln21 -pe omp 8 -m e -M zhuang96@bu.edu run_BWAaln21.sh"
    ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "bwa sampe -n 3 chr21_new_wraparound.fa bwa_aln_chr21_1.sai bwa_aln_chr21_2.sai /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_1.fastq.gz /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_2.fastq.gz > alignment21.sam\n",
+    "\n",
+    "qsub -P vntrseek -N bwasampe21 -m e -M zhuang96@bu.edu run_BWAsamp21.sh"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "This command didn't work due to some weird character/spacing in my modified .fa file\n",
+    "\n",
+    "bwa mem -M -t 8 chr21_new_wraparound.fa /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_1.fastq.gz /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_2.fastq.gz > bwamem_chr21.sam\n",
+    "\n",
+    "qsub -P vntrseek -N bwamem21 -m e -M zhuang96@bu.edu run_BWAmem21.sh"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "Because the previous .fa file didn't work, i edited the .fa file by \"removing\" spacing using a regex expression to replace any characters that weren't AGTC. This seemed to work!\n",
+    "\n",
+    "bwa mem -M -t 8 testing.fa /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_1.fastq.gz /projectnb/vntrseek/CHM1/new_data/100bp/fastq_SRR1514952_2.fastq.gz | samtools sort -@ 7 -o bwamem_chr21.bam"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "Next, i indexed the .bam file that was produced with samtools view. And I used bedtools intersect to find the intersections.\n",
+    "\n",
+    "samtools index bwamem_chr21.sam\n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0\n",
+    "\n",
+    "\n",
+    "qsub -P vntrseek -N bedtoolsint21 -m e -M zhuang96@bu.edu bedtools21.sh"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "Looking at the first ten TRs (modified indexing of chr21)\n",
+    "\n",
+    "chr21\t5014848\t5014927\n",
+    "chr21\t5017530\t5017632\n",
+    "chr21\t5020683\t5020717\n",
+    "chr21\t5021091\t5021133\n",
+    "chr21\t5022251\t5022281\n",
+    "chr21\t5022339\t5022407\n",
+    "chr21\t5023361\t5023400\n",
+    "chr21\t5028374\t5028408\n",
+    "chr21\t5028458\t5028491\n",
+    "chr21\t5033409\t5033471\n",
+    "\n",
+    "WHAT EVERYTHING IS EVALUATED TO and MEANING in BEDTOOLS? (below are the output parameters)\n",
+    "1,2,3,4 = chr, start, end, name\n",
+    "5. score - (ranges from 0-1000; but in this case should only range from 0.60) indicates a confidence level #can't find online how it's calculate; \n",
+    "6.strand - Defines the strand - either ‘+’ or ‘-‘. \n",
+    "    '+' means that rna can be translated to protein directly\n",
+    "    '-' means that rna cant be translated to protein directly\n",
+    "7.thickStart - The starting position at which the feature is drawn thickly (of coding sequence)\n",
+    "8.thickEnd - The ending position at which the feature is drawn thickly (of coding sequence)\n",
+    "9.itemRgb - An RGB value of the form R,G,B (e.g. 255,0,0).\n",
+    "10.blockCount - The number of blocks (exons) in the BED line.\n",
+    "11.blockSizes - A comma-separated list of the block sizes.\n",
+    "12.blockStarts - A comma-separated list of block starts."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "commands to try:\n",
+    "\n",
+    "1) WA :return original A intervals that intersect B intervals for every intersection \n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa| less\n",
+    "\n",
+    "2) WB : intersection interval followed by original B interval (modified .bed)\n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wb| less\n",
+    "\n",
+    "3) (USELESS ?) WA WB : interval A and interval B; actual overlap interval not returned\n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa -wb| less\n",
+    "\t-> 100% of the query overlap is recorded; which isn't what we want?\n",
+    "\n",
+    "4) (USELESS) U : like WA but only returns once and doesnt return multiple times if multiple intersections; but also no count\n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -u| less\n",
+    "\n",
+    "5) (COUNTS EVERYTHING!) C : returns every A interval w/count of overlaps with B interval (extra column added)\n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -c| less\n",
+    "\n",
+    "6) (COUNTS EVERYTHING & SAME AS C) WA C : returns every A interval w/count of overlaps with B interval (extra column added)\n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -c| less\n",
+    "\n",
+    "7) (USELESS) V : returns A intervals with no overlap with B \n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -v| less\n",
+    "\n",
+    "8) (MAYBE helpful) WAO : returns every original A interval, the overlapping B int and SIZE of overlap \n",
+    "bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wao| less\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "Notes\n",
+    "1. Dont need to look at strand \n",
+    "2. CIGAR STRING:\n",
+    "    M -> match (or mismatch? ) : Match (alignment column containing two letters). \n",
+    "            This could contain two different letters (mismatch) or two identical letters.\n",
+    "    I -> insertion\n",
+    "    D -> deletion\n",
+    "    S -> Segment of the query sequence that does not appear in the alignment. This is used with soft clipping, \n",
+    "            where the full-length query sequence is given (field 10 in the SAM record). In this case, \n",
+    "            S operations specify segments at the start and/or end of the query that do not appear in a local alignment\n",
+    "3. a difference between -wa and -wb is that the start and end positions compared to thickStart&end\n",
+    "    -> are the same in -wa\n",
+    "    -> are different in -wb\n",
+    "    => \n",
+    "        -wa returns original A intervals that intersect B intervals for every intersection (A U B)\n",
+    "        -wb returns intersection interval (A U B) followed by original B interval (modified .bed)\n",
+    "    \n",
+    "4. -wao starts at lowest position of mapping; but -wa and -wb start after the first TR in modified .bed\n",
+    "\n",
+    "5. -c counts but has a lot of 0 occurences \n",
+    "    -> where are the counts? just returns the same thing as wao (ex: 5076895 is the same..should be 2 counts)\n",
+    "    -> does the 0 mean anything? -> its the score\n",
+    "    -> does more occurence mean better score/confidence level (do count and score correlate)?\n",
+    "    -> some -1 -1 start and end : means that B and A dont overlap ... why?\n",
+    "=> -wa -c produces counts in last column but has a bunch of 0s     \n",
+    "OBSERVATION WA C, C, WA\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa -c| grep \"5076895\"\n",
+    "chr21\t5076805\t5076895\tSRR1514952.79871593/1\t0\t+\t5076805\t5076895\t0,0,0\t1\t90,\t0,\t0\n",
+    "chr21\t5076895\t5076995\tSRR1514952.21920478/1\t34\t+\t5076895\t5076995\t0,0,0\t1\t100,\t0,\t1\n",
+    "chr21\t5076895\t5076995\tSRR1514952.51676403/1\t60\t-\t5076895\t5076995\t0,0,0\t1\t100,\t0,\t1\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -c| grep \"5076895\"\n",
+    "chr21\t5076805\t5076895\tSRR1514952.79871593/1\t0\t+\t5076805\t5076895\t0,0,0\t1\t90,\t0,\t0\n",
+    "chr21\t5076895\t5076995\tSRR1514952.21920478/1\t34\t+\t5076895\t5076995\t0,0,0\t1\t100,\t0,\t1\n",
+    "chr21\t5076895\t5076995\tSRR1514952.51676403/1\t60\t-\t5076895\t5076995\t0,0,0\t1\t100,\t0,\t1\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa| grep \"5076895\"\n",
+    "chr21\t5076895\t5076995\tSRR1514952.21920478/1\t34\t+\t5076895\t5076995\t0,0,0\t1\t100,\t0,\n",
+    "chr21\t5076895\t5076995\tSRR1514952.51676403/1\t60\t-\t5076895\t5076995\t0,0,0\t1\t100,\t0,\n",
+    "***different NAMES which is wh the count is weird?***\n",
+    "\n",
+    "*** BUT found an example where it doesnt count all the intersections even with diff names***\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa -wb| grep \"5076752\"\n",
+    "chr21\t5076718\t5076832\tSRR1514952.211682921/2\t40\t+\t5076718\t5076832\t0,0,0\t1\t114,\t0,\tchr21\t5076752\t5076809\n",
+    "chr21\t5076729\t5076843\tSRR1514952.95720075/1\t40\t+\t5076729\t5076843\t0,0,0\t1\t114,\t0,\tchr21\t5076752\t5076809\n",
+    "chr21\t5076743\t5076853\tSRR1514952.174268541/2\t0\t-\t5076743\t5076853\t0,0,0\t1\t110,\t0,\tchr21\t5076752\t5076809\n",
+    "chr21\t5076748\t5076846\tSRR1514952.168711264/1\t60\t-\t5076748\t5076846\t0,0,0\t1\t98,\t0,\tchr21\t5076752\t5076809\n",
+    "chr21\t5076750\t5076850\tSRR1514952.201046452/1\t3\t-\t5076750\t5076850\t0,0,0\t1\t100,\t0,\tchr21\t5076752\t5076809\n",
+    "chr21\t5076751\t5076832\tSRR1514952.45491577/1\t0\t+\t5076751\t5076832\t0,0,0\t1\t81,\t0,\tchr21\t5076752\t5076809\n",
+    "chr21\t5076752\t5076852\tSRR1514952.89598143/1\t3\t-\t5076752\t5076852\t0,0,0\t1\t100,\t0,\tchr21\t5076752\t5076809\n",
+    "^C\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed | grep \"5076752\"\n",
+    "chr21\t5076752\t5076809\tSRR1514952.211682921/2\t40\t+\t5076718\t5076832\t0,0,0\t1\t114,\t0,\n",
+    "chr21\t5076752\t5076809\tSRR1514952.95720075/1\t40\t+\t5076729\t5076843\t0,0,0\t1\t114,\t0,\n",
+    "chr21\t5076752\t5076809\tSRR1514952.174268541/2\t0\t-\t5076743\t5076853\t0,0,0\t1\t110,\t0,\n",
+    "chr21\t5076752\t5076809\tSRR1514952.168711264/1\t60\t-\t5076748\t5076846\t0,0,0\t1\t98,\t0,\n",
+    "chr21\t5076752\t5076809\tSRR1514952.201046452/1\t3\t-\t5076750\t5076850\t0,0,0\t1\t100,\t0,\n",
+    "chr21\t5076752\t5076809\tSRR1514952.45491577/1\t0\t+\t5076751\t5076832\t0,0,0\t1\t81,\t0,\n",
+    "chr21\t5076752\t5076809\tSRR1514952.89598143/1\t3\t-\t5076752\t5076852\t0,0,0\t1\t100,\t0,\n",
+    "^C\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -c| grep \"5076752\"\n",
+    "chr21\t5076752\t5076852\tSRR1514952.89598143/1\t3\t-\t5076752\t5076852\t0,0,0\t1\t100,\t0,\t1\n",
+    "chr21\t5351965\t5352001\tSRR1514952.50767522/1\t15\t+\t5351965\t5352001\t0,0,0\t1\t36,\t0,\t0\n",
+    "chr21\t5352023\t5352052\tSRR1514952.50767522/2\t15\t-\t5352023\t5352052\t0,0,0\t1\t29,\t0,\t0\n",
+    "^C\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa -c| grep \"5076752\"\n",
+    "chr21\t5076752\t5076852\tSRR1514952.89598143/1\t3\t-\t5076752\t5076852\t0,0,0\t1\t100,\t0,\t1\n",
+    "chr21\t5351965\t5352001\tSRR1514952.50767522/1\t15\t+\t5351965\t5352001\t0,0,0\t1\t36,\t0,\t0\n",
+    "chr21\t5352023\t5352052\tSRR1514952.50767522/2\t15\t-\t5352023\t5352052\t0,0,0\t1\t29,\t0,\t0\n",
+    "\n",
+    "6. using no parameters and -wa -> some things are missing when using -wa , but its there when I use -wb\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed| grep \"5028458\"\n",
+    "chr21\t5028458\t5028491\tSRR1514952.14460997/2\t21\t-\t5028421\t5028505\t0,0,0\t1\t84,\t0,\n",
+    "chr21\t5028458\t5028491\tSRR1514952.105726580/1\t0\t-\t5028422\t5028506\t0,0,0\t1\t84,\t0,\n",
+    "chr21\t5028458\t5028491\tSRR1514952.94793220/2\t0\t+\t5028428\t5028512\t0,0,0\t1\t84,\t0,\n",
+    "chr21\t5028458\t5028491\tSRR1514952.153181845/1\t0\t+\t5028435\t5028519\t0,0,0\t1\t84,\t0,\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa| grep \"5028458\"\n",
+    "^C\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wb| grep \"5028458\"\n",
+    "chr21\t5028458\t5028491\tSRR1514952.14460997/2\t21\t-\t5028421\t5028505\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "chr21\t5028458\t5028491\tSRR1514952.105726580/1\t0\t-\t5028422\t5028506\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "chr21\t5028458\t5028491\tSRR1514952.94793220/2\t0\t+\t5028428\t5028512\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "chr21\t5028458\t5028491\tSRR1514952.153181845/1\t0\t+\t5028435\t5028519\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -c| grep \"5028458\"\n",
+    "chr21\t6089527\t6089548\tSRR1514952.175028458/2\t0\t+\t6089527\t6089548\t0,0,0\t1\t21,\t0,\t0\n",
+    "chr21\t6089613\t6089639\tSRR1514952.175028458/1\t0\t-\t6089613\t6089639\t0,0,0\t1\t26,\t0,\t0\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed -wa -wb| grep \"5028458\"\n",
+    "chr21\t5028421\t5028505\tSRR1514952.14460997/2\t21\t-\t5028421\t5028505\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "chr21\t5028422\t5028506\tSRR1514952.105726580/1\t0\t-\t5028422\t5028506\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "chr21\t5028428\t5028512\tSRR1514952.94793220/2\t0\t+\t5028428\t5028512\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "chr21\t5028435\t5028519\tSRR1514952.153181845/1\t0\t+\t5028435\t5028519\t0,0,0\t1\t84,\t0,\tchr21\t5028458\t5028491\n",
+    "[zhuang96@scc2 mapping]$ bedtools intersect -abam bwamem_chr21.bam -b chr21_new.bed -F 1.0 -bed| grep \"5028458\"\n",
+    "chr21\t5028458\t5028491\tSRR1514952.14460997/2\t21\t-\t5028421\t5028505\t0,0,0\t1\t84,\t0,\n",
+    "chr21\t5028458\t5028491\tSRR1514952.105726580/1\t0\t-\t5028422\t5028506\t0,0,0\t1\t84,\t0,\n",
+    "chr21\t5028458\t5028491\tSRR1514952.94793220/2\t0\t+\t5028428\t5028512\t0,0,0\t1\t84,\t0,\n",
+    "chr21\t5028458\t5028491\tSRR1514952.153181845/1\t0\t+\t5028435\t5028519\t0,0,0\t1\t84,\t0,\n",
+    "\n",
+    " -> no parameter means it just returns every time B overlaps A\n",
+    "    -wa means that B and A overlap but ALSO the start end positions of the READS \n",
+    "    -wb means the B and A overlap but ALSO the start end positions of the MODIFIED\n",
+    "    * but why doesnt c print anything ? would be understandable if -wa -c doesnt print anything. \n",
+    "        -> JUST KIDDING; -wa -c and -c are the SAME \n",
+    "    - is EMPTY and -wa -wb the SAME? But just adds the last two columns of B ???\n",
+    "    \n",
+    "Lingering questions\n",
+    "\n",
+    "1. how is score calculated? how can a mapping be made but have a score 0? \n",
+    "2. thickstart and thickend VS start and end \n",
+    "        boundaries of coding sequence (reads?) VS transcript (my bed file)\n",
+    "3. how is it possible for column 11 (blocksize) to be over 100 if reads are 100 base pairs? "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "SyntaxError",
+     "evalue": "invalid syntax (<ipython-input-2-84c948628aeb>, line 1)",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;36m  File \u001b[0;32m\"<ipython-input-2-84c948628aeb>\"\u001b[0;36m, line \u001b[0;32m1\u001b[0m\n\u001b[0;31m    CONCLUSION :\u001b[0m\n\u001b[0m               ^\u001b[0m\n\u001b[0;31mSyntaxError\u001b[0m\u001b[0;31m:\u001b[0m invalid syntax\n"
+     ]
+    }
+   ],
+   "source": [
+    "CONCLUSION : \n",
+    "    -WA: returns original A intervals (from reads) than are overlapped by B \n",
+    "    -WAO: returns same as above but also SIZE\n",
+    "    -WA -WB: returns original A and B interval; overlap interval not returned\n",
+    "    -NONE returns OVERLAP interval start and end (looks like its just WB but WB has A in last two columns)\n",
+    "    **regardless, thickstart&end are the same**\n",
+    "    \n",
+    "    -C COUNTS THE THICK REGION !!! (because -wa and -wb are looking at the start end of A or B but NOT overlap location)\n",
+    "    \n",
+    "    i think what we want to look at is the file with \"-c\" as param because it looks at the overlap region\n",
+    "        -> should filter out those with >= 1 counts \n",
+    "    \n",
+    "    looked to see if -wa and -c were the same because since its 100% overlap, it should be the same => thick region\n",
+    "        -> not the same though (-c has \"extra\" info in one case) BECAUSE (?) no read mapped there but there is an overlap\n",
+    "        ** WANT TO USE -C and compare to -WA \n",
+    "            -> \"-wa\" is mapped reads with more than 1.8 TRs but \"-c\" does ALL overlaps and discovered EXTRA **\n",
+    "            -> maybe better to compare \"-wa -wb\" with \"-c\" because can see the modified interval as well\n",
+    "            -> \"-c\" counts the number of times it shows up in \"-wa\" because some dont have any counts but is overlapping"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
   }
  ],
  "metadata": {
